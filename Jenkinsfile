@@ -71,5 +71,31 @@ pipeline {
                 }
             }
         }
+
+        stage('Docker Build and Tag') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-creds') {
+                        sh "docker build -t nobeldhakal123/bloggingapp:v1 ."
+                    }
+                }
+            }
+        }
+
+        stage('Docker Image Scan') {
+            steps {
+                sh "trivy image --format table -o image.html nobeldhakal123/bloggingapp:v1"
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-creds') {
+                        sh "docker push nobeldhakal123/bloggingapp:v1"
+                    }
+                }
+            }
+        }
     }
 }
