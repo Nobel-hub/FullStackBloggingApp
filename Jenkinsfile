@@ -88,7 +88,8 @@ pipeline {
 
         stage('K8s Deploy and Run') {
             steps {
-                kubeconfig(credentialsId: 'k8-cred', serverUrl: 'https://2524E745E7A0CD62B504F787C75F663F.gr7.us-east-1.eks.amazonaws.com') {
+                // Using kubeconfig secret file
+                withKubeConfig([credentialsId: 'kubeconfig-file']) {
                     sh "kubectl apply -f deployment-service.yml -n webapps"
                     sh "kubectl rollout status deployment/bloggingapp-deployment -n webapps"
                 }
@@ -97,7 +98,7 @@ pipeline {
 
         stage('K8s Verify') {
             steps {
-                kubeconfig(credentialsId: 'k8-cred', serverUrl: 'https://2524E745E7A0CD62B504F787C75F663F.gr7.us-east-1.eks.amazonaws.com') {
+                withKubeConfig([credentialsId: 'kubeconfig-file']) {
                     sh "kubectl get pods -n webapps"
                     sh "kubectl get service -n webapps"
                 }
