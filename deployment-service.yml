@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: bloggingapp-deployment
+  namespace: webapps   # <-- added
 spec:
   selector:
     matchLabels:
@@ -14,17 +15,18 @@ spec:
     spec:
       containers:
         - name: bloggingapp
-          image: adijaiswal/bloggingapp:latest # Updated image to private DockerHub image
+          image: nobeldhakal123/bloggingapp:v1
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
       imagePullSecrets:
-        - name: regcred # Reference to the Docker registry secret
+        - name: my-docker-secret
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: bloggingapp-ssvc
+  namespace: webapps   # <-- added
 spec:
   selector:
     app: bloggingapp

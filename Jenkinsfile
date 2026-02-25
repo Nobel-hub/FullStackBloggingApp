@@ -85,5 +85,40 @@ pipeline {
                 }
             }
         }
+
+        stage('K8s Deploy and Run') {
+            steps {
+                kubeconfig(credentialsId: 'k8-cred', serverUrl: 'https://2524E745E7A0CD62B504F787C75F663F.gr7.us-east-1.eks.amazonaws.com') {
+                    sh "kubectl apply -f deployment-service.yml -n webapps"
+                    sh "kubectl rollout status deployment/bloggingapp-deployment -n webapps"
+                }
+            }
+        }
+
+        stage('K8s Verify') {
+            steps {
+                kubeconfig(credentialsId: 'k8-cred', serverUrl: 'https://2524E745E7A0CD62B504F787C75F663F.gr7.us-east-1.eks.amazonaws.com') {
+                    sh "kubectl get pods -n webapps"
+                    sh "kubectl get service -n webapps"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            mail to: 'nobeldhakal01@gmail.com',
+                 subject: "Jenkins Build SUCCESS: ${JOB_NAME} #${BUILD_NUMBER}",
+                 body: """Hi,
+
+Your pipeline '${JOB_NAME}' (#${BUILD_NUMBER}) has successfully deployed the application.
+
+Check the details at: ${BUILD_URL}
+
+K8s Deployment and verification completed successfully in namespace 'webapps'.
+
+Regards,
+Jenkins"""
+        }
     }
 }
