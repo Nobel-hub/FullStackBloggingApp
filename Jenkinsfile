@@ -8,6 +8,8 @@ pipeline {
 
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
+        AWS_REGION     = 'us-east-1'
+        EKS_CLUSTER    = 'blogging-app-cluster'
     }
 
     stages {
@@ -86,21 +88,48 @@ pipeline {
             }
         }
 
+        // ────────────────────────────────────────────────
+        //     Modern EKS authentication using AWS CLI
+        // ────────────────────────────────────────────────
         stage('K8s Deploy and Run') {
             steps {
-                // Using kubeconfig secret file
-                withKubeConfig([credentialsId: 'kubeconfig-file']) {
-                    sh "kubectl apply -f deployment-service.yml -n webapps"
-                    sh "kubectl rollout status deployment/bloggingapp-deployment -n webapps"
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
+                                  credentialsId: 'aws-eks-creds',
+                                  accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                                  secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+                    sh '''
+                        # Set AWS region
+                        export AWS_DEFAULT_REGION=${AWS_REGION}
+                        
+                        # Generate fresh kubeconfig for this build
+                        aws eks update-kubeconfig --name ${EKS_CLUSTER}
+                        
+                        # Apply manifests and wait for rollout
+                        kubectl apply -f deployment-service.yml -n webapps
+                        kubectl rollout status deployment/bloggingapp-deployment \
+                            -n webapps \
+                            --timeout=180s
+                    '''
                 }
             }
         }
 
         stage('K8s Verify') {
             steps {
-                withKubeConfig([credentialsId: 'kubeconfig-file']) {
-                    sh "kubectl get pods -n webapps"
-                    sh "kubectl get service -n webapps"
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
+                                  credentialsId: 'aws-eks-creds',
+                                  accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                                  secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+                    sh '''
+                        export AWS_DEFAULT_REGION=${AWS_REGION}
+                        aws eks update-kubeconfig --name ${EKS_CLUSTER}
+                        
+                        echo "Pods in webapps namespace:"
+                        kubectl get pods -n webapps -o wide
+                        
+                        echo -e "\\nServices in webapps namespace:"
+                        kubectl get svc -n webapps
+                    '''
                 }
             }
         }
@@ -117,6 +146,18 @@ Your pipeline '${JOB_NAME}' (#${BUILD_NUMBER}) has successfully deployed the app
 Check the details at: ${BUILD_URL}
 
 K8s Deployment and verification completed successfully in namespace 'webapps'.
+
+Regards,
+Jenkins"""
+        }
+        failure {
+            mail to: 'nobeldhakal01@gmail.com',
+                 subject: "Jenkins Build FAILED: ${JOB_NAME} #${BUILD_NUMBER}",
+                 body: """Hi,
+
+The pipeline '${JOB_NAME}' (#${BUILD_NUMBER}) failed.
+
+Check the console output here: ${BUILD_URL}console
 
 Regards,
 Jenkins"""
