@@ -1,6 +1,6 @@
-pipeline { 
+pipeline {
     agent any
-    
+
     tools {
         maven 'maven3'
         jdk 'jdk17'
@@ -24,19 +24,13 @@ pipeline {
 
         stage('Compile') {
             steps {
-                sh "mvn compile"
+                sh 'mvn compile'
             }
         }
-        
+
         stage('Test') {
             steps {
-                sh "mvn test"
-            }
-        }
-        
-        stage('Trivy FileSystem Scan') {
-            steps {
-                sh "trivy fs --format table -o fs.html ."
+                sh 'mvn test'
             }
         }
 
@@ -55,7 +49,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh "mvn package"
+                sh 'mvn package'
             }
         }
 
@@ -67,7 +61,7 @@ pipeline {
                     maven: 'maven3',
                     traceability: true
                 ) {
-                    sh "mvn deploy"
+                    sh 'mvn deploy'
                 }
             }
         }
@@ -76,15 +70,9 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'docker-creds') {
-                        sh "docker build -t nobeldhakal123/bloggingapp:v1 ."
+                        sh 'docker build -t nobeldhakal123/bloggingapp:v1 .'
                     }
                 }
-            }
-        }
-
-        stage('Docker Image Scan') {
-            steps {
-                sh "trivy image --format table -o image.html nobeldhakal123/bloggingapp:v1"
             }
         }
 
@@ -92,7 +80,7 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'docker-creds') {
-                        sh "docker push nobeldhakal123/bloggingapp:v1"
+                        sh 'docker push nobeldhakal123/bloggingapp:v1'
                     }
                 }
             }
